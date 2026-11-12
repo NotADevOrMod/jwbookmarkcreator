@@ -58,6 +58,9 @@ interface BookmarkDao {
     @Query("SELECT * FROM articles WHERE bookmarkId = :id")
     fun articlesFor(id: Long): Flow<List<ArticleEntity>>
 
+    @Query("SELECT * FROM articles")
+    fun allArticles(): Flow<List<ArticleEntity>>
+
     @Insert suspend fun insertArticle(a: ArticleEntity): Long
     @Delete suspend fun deleteArticle(a: ArticleEntity)
 }
