@@ -31,15 +31,19 @@ object ScriptureParser {
         val v1 = m.groupValues[3]
         val v2 = m.groupValues[4].toIntOrNull()
 
+        fun build(ch: Int, s: Int, e: Int?): Reference? {
+            val max = book.verses.getOrNull(ch - 1) ?: return null
+            if (s !in 1..max) return null
+            if (e != null && (e < s || e > max)) return null
+            return Reference(book, ch, s, e?.takeIf { it > s })
+        }
+
         // One-chapter books (Jude 5) treat the number as a verse.
-        if (book.chapters == 1 && v1.isEmpty()) return Reference(book, 1, first).takeIf { first >= 1 }
+        if (book.chapters == 1 && v1.isEmpty()) return build(1, first, null)
         if (first !in 1..book.chapters) return null
         if (v1.isEmpty()) return Reference(book, first, 1)
-
         val start = v1.toIntOrNull() ?: return null
-        if (start < 1) return null
-        if (v2 != null && v2 < start) return null
-        return Reference(book, first, start, v2?.takeIf { it > start })
+        return build(first, start, v2)
     }
 }
 
