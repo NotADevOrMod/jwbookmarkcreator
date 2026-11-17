@@ -128,6 +128,19 @@ class BookmarksViewModel(app: Application) : AndroidViewModel(app) {
     fun delete(b: BookmarkEntity) = viewModelScope.launch { dao.delete(b) }
     fun removeArticle(a: ArticleEntity) = viewModelScope.launch { dao.deleteArticle(a) }
 
+    fun importUri(uri: Uri, onDone: (String) -> Unit) = viewModelScope.launch {
+        val msg = try {
+            val text = withContext(Dispatchers.IO) {
+                getApplication<Application>().contentResolver.openInputStream(uri)
+                    ?.bufferedReader()?.use { it.readText() }
+            } ?: ""
+            "Imported ${importJson(text)} new bookmarks"
+        } catch (e: Exception) {
+            "Import failed"
+        }
+        onDone(msg)
+    }
+
     suspend fun exportJson(): String {
         val arts = dao.allArticlesOnce().groupBy { it.bookmarkId }
         val out = JSONArray()
@@ -186,7 +199,7 @@ class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         if (savedInstanceState == null) handleIntent(intent)
-        setContent { ScriptureTheme { App(vm, shared) { shared = null } } }
+        setContent { ScriptureTheme { App(vm, shared) { shared = null; moveTaskToBack(true) } } }
     }
 
     override fun onNewIntent(intent: Intent) {
@@ -195,6 +208,12 @@ class MainActivity : ComponentActivity() {
     }
 
     private fun handleIntent(intent: Intent?) {
+        if (intent?.action == Intent.ACTION_VIEW) {
+            intent.data?.let { uri ->
+                vm.importUri(uri) { Toast.makeText(this, it, Toast.LENGTH_LONG).show() }
+            }
+            return
+        }
         if (intent?.action != Intent.ACTION_SEND) return
         val text = intent.getStringExtra(Intent.EXTRA_TEXT) ?: return
         val url = Regex("""https?://\S+""").find(text)?.value ?: return
@@ -236,7 +255,7 @@ fun App(vm: BookmarksViewModel, shared: SharedArticle?, onSharedDone: () -> Unit
     val scope = rememberCoroutineScope()
 
     val exportLauncher = rememberLauncherForActivityResult(
-        ActivityResultContracts.CreateDocument("application/json")
+        ActivityResultContracts.CreateDocument("application/octet-stream")
     ) { uri ->
         if (uri != null) scope.launch {
             val msg = try {
@@ -296,7 +315,7 @@ fun App(vm: BookmarksViewModel, shared: SharedArticle?, onSharedDone: () -> Unit
                         DropdownMenu(expanded = menuOpen, onDismissRequest = { menuOpen = false }) {
                             DropdownMenuItem(
                                 text = { Text("Export backup") },
-                                onClick = { menuOpen = false; exportLauncher.launch("scripture-bookmarks.json") },
+                                onClick = { menuOpen = false; exportLauncher.launch("bookmarks.jwbkmrks") },
                             )
                             DropdownMenuItem(
                                 text = { Text("Import backup") },
