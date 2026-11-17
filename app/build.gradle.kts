@@ -10,10 +10,10 @@ android {
 
     defaultConfig {
         applicationId = "com.scripturebookmarks"
-        minSdk = 26
+        minSdk = 25
         targetSdk = 34
         versionCode = System.getenv("GITHUB_RUN_NUMBER")?.toIntOrNull() ?: 1
-        versionName = "0.3"
+        versionName = "0.3-android7"
     }
     // Same key on every build, so new APKs install over old ones and keep your data.
     signingConfigs {
